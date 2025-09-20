@@ -165,10 +165,10 @@ RPX offers significant advantages over other RPA extraction methods:
 
 ```bash
 # Install globally for CLI usage
-npm install -g rpx
+npm install -g @dynamicaaa/rpx
 
 # Or install locally for programmatic usage
-npm install rpx
+npm install @dynamicaaa/rpx
 ```
 
 <div align="center">
