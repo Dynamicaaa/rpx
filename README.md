@@ -1,0 +1,2 @@
+# rpx
+A modern, feature-rich library and CLI tool for extracting RenPy RPA archives (RPA-1.0 to RPA-4.0) in Node.js. Supports Python pickle serialization, encrypted archives, smart decompression, and efficient file listing. Offers both programmatic and command-line interfaces for seamless integration and automation. Cross-platform, actively maintained, and designed for the RenPy modding community.
