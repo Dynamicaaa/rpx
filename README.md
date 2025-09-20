@@ -4,24 +4,6 @@
   
   <h3>✨ Extract RenPy game archives with ease ✨</h3>
   
-  <p>
-    <a href="https://github.com/Dynamicaaa/rpx/releases">
-      <img src="https://img.shields.io/github/v/release/Dynamicaaa/rpx?style=for-the-badge&logo=github&logoColor=white&color=ff69b4&labelColor=8b008b" alt="Latest Release">
-    </a>
-    <a href="LICENSE">
-      <img src="https://img.shields.io/github/license/Dynamicaaa/rpx?style=for-the-badge&logo=opensourceinitiative&logoColor=white&color=4169e1&labelColor=191970" alt="License">
-    </a>
-  </p>
-  
-  <p>
-    <a href="https://github.com/Dynamicaaa/rpx/stargazers">
-      <img src="https://img.shields.io/github/stars/Dynamicaaa/rpx?style=for-the-badge&logo=github&logoColor=white&color=ffd700&labelColor=ff8c00" alt="GitHub Stars">
-    </a>
-    <a href="https://github.com/Dynamicaaa/rpx/forks">
-      <img src="https://img.shields.io/github/forks/Dynamicaaa/rpx?style=for-the-badge&logo=github&logoColor=white&color=9370db&labelColor=663399" alt="GitHub Forks">
-    </a>
-  </p>
-  
   <br>
   
   <h4>🌟 Modern, feature-rich RPA extraction library for Node.js 🌟</h4>
