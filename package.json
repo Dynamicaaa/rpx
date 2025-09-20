@@ -1,5 +1,5 @@
 {
-  "name": "rpx",
+  "name": "@dynamicaaa/rpx",
   "version": "1.0.0",
   "description": "A comprehensive RenPy RPA Extractor library in JavaScript that handles Python pickle serialization formats",
   "main": "src/index.js",
