@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { Parser } = require('pickleparser');
+const RPickleX = require('./rpicklex');
 
 /**
  * RPX - RenPy RPA Extractor Library
@@ -134,9 +134,9 @@ class RPX {
         }
       }
       
-      // Parse pickle data using pickleparser
-      const parser = new Parser();
-      const rawIndex = parser.parse(decompressedIndex);
+      // Parse pickle data using rpicklex
+      const picklex = new RPickleX();
+      const rawIndex = picklex.loads(decompressedIndex);
       
       // Decode XOR'd entries for RPA-3.0+ and RPA-4.0
       if (this.header.key && this.header.key !== 0) {

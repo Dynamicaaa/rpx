@@ -40,7 +40,7 @@
 <td style="text-align: center; padding: 12px; border: 1px solid #ddd;">⭐ <strong>XOR Decryption</strong> - Handle encrypted RPA archives</td>
 </tr>
 <tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🔐 <strong>Pickle Parsing</strong> - Uses pickleparser for index handling</td>
+<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🔐 <strong>Pickle Parsing</strong> - Uses RPickleX which is custom-made for RPX</td>
 <td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🏷️ <strong>File Listing</strong> - Enumerate archive contents</td>
 </tr>
 <tr>
@@ -381,7 +381,7 @@ We welcome contributions! Here's how you can help:
 <br>
 
 This library uses the following dependencies:
-- **pickleparser** - For Python pickle format handling
+- **RPickleX** - Custom-made for RPX Python pickle format handling
 - **yargs** - For command-line argument parsing
 
 <br>

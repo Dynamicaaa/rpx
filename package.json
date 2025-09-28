@@ -1,13 +1,12 @@
 {
   "name": "@dynamicaaa/rpx",
-  "version": "1.0.0-hf1",
+  "version": "1.1.0",
   "description": "A comprehensive RenPy RPA Extractor library in JavaScript that handles Python pickle serialization formats",
   "main": "src/index.js",
   "bin": {
     "rpx": "bin/rpx.js"
   },
   "scripts": {
-    "test": "node test/test.js",
     "start": "node bin/rpx.js"
   },
   "keywords": [
@@ -22,7 +21,6 @@
   "author": "Dynamicaaa",
   "license": "MIT",
   "dependencies": {
-    "pickleparser": "^0.2.1",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
