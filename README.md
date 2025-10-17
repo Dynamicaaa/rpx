@@ -19,7 +19,7 @@ RPX is a modern JavaScript implementation of the Ren'Py archive toolchain. It bu
 - Supports every official archive header (`RPA-1.0` through `RPA-4.0`).
 - Understands legacy `.rpi` index files and modern embedded indexes.
 - Automatically decompiles `.rpyc` scripts via bundled `unrpyc-js` helpers.
-- Detects the originating Ren''Py/Python runtime using heuristics.
+- Detects the originating Ren'Py/Python runtime using heuristics.
 - Published as an ES module – integrate it with build tools, scripts, or other CLIs.
 
 > Extensive guides live in the [`docs/`](docs/README.md) folder. This README highlights the essentials.
