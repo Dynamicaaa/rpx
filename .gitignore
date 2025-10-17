@@ -136,3 +136,6 @@ dist
 .pnp.*
 
 package-lock.json
+
+# Local sources moved elsewhere
+pyrunner/

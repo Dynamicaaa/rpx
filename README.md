@@ -191,14 +191,63 @@ rpx list -i game.rpa
 rpx info -i game.rpa
 ```
 
+<div align="left">
+
+#### CLI Options
+
+- `rpx extract`
+  - `-i, --input <path>`: RPA file to extract (required)
+  - `-o, --output <dir>`: Output directory (required)
+  - `--no-decompile`: Skip RPYC decompilation
+  - `--overwrite`: Overwrite existing RPY files
+  - `--try-harder`: Try-harder mode for decompilation
+  - `--keep-rpyc`: Keep original `.rpyc` files after decompilation
+
+- `rpx list`
+  - `-i, --input <path>`: RPA file to inspect (required)
+  - `-f, --filter <suffix>`: Only include files ending with this (e.g., `.rpyc`, `.png`)
+  - `-s, --sort <field>`: Sort by `name` (default), `size`, or `ext`
+  - `-S, --size`: Show file sizes in the listing
+
+- `rpx info`
+  - `-i, --input <path>`: RPA file to inspect (required)
+  - `-v, --verbose`: Show detailed content breakdown
+
+</div>
+
+#### RPYC Runtime Detection
+
+- Extraction now auto-detects the Ren'Py runtime generation (legacy RPC1, 6.x/7.x Python 2 RPC2, or 8.x Python 3).
+- Heuristics combine the file header, RPC chunk table, pickle protocol, script metadata (`script_version`, `build`), and the presence of `init_offset` statements for finer classification.
+- The CLI summary surfaces the detected label, pickle protocol, confidence, and the heuristics that led to the verdict, so you immediately know which toolchain is required.
+
+Example summary:
+
+```text
+Runtime:        Ren'Py 6.18–6.98 (Python 2) - RPC2 (pickle v2)
+Script ver:     5003000
+Confidence:     high
+Detection:      RPC2 header; script_version=5003000; Pickle protocol v2 (Python 2)
+```
+
+Programmatic access is available via the bundled wrapper:
+
+```js
+import UnrpycJS from '@dynamicaaa/rpx/unrpyc-js/index.js';
+
+const unrpyc = new UnrpycJS();
+const runtime = await unrpyc.detectRpycRuntime('game/script-ch0.rpyc');
+console.log(runtime.label); // e.g. "Ren'Py 7.x (Python 2)"
+```
+
 <div align="center">
 
 ### 💻 **Programmatic Usage**
 
 </div>
 
-```javascript
-const { RPX, extract, list } = require('rpx');
+```js
+import { RPX, extract, list } from '@dynamicaaa/rpx';
 
 // Create an RPX instance
 const rpx = new RPX('game.rpa');
@@ -242,10 +291,12 @@ npm install
 npm test
 
 # Use the CLI
-node bin/rpx.js --help
+rpx --help
 ```
 
 <div align="center">
+
+> Note: RPX uses the published `@dynamicaaa/pyrunner` npm package under the hood (via the bundled `unrpyc-js` wrapper). No local `pyrunner/` source folder is required.
 
 ### **API Documentation**
 

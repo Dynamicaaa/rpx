@@ -1,6 +1,18 @@
-const fs = require('fs');
-const path = require('path');
-const RPickleX = require('./rpicklex');
+import fs from 'fs';
+import path from 'path';
+import zlib from 'zlib';
+import { promisify } from 'util';
+import { RPYCDecompiler } from './decompiler.js';
+
+// Load RPickleX with robust UMD/ESM interop
+let __rpx_mod = await import('./rpicklex.js');
+const RPickleX = __rpx_mod?.default || __rpx_mod?.RPickleX || globalThis.RPickleX;
+if (!RPickleX) {
+  throw new Error('RPickleX module failed to load');
+}
+
+const inflate = promisify(zlib.inflate);
+const inflateRaw = promisify(zlib.inflateRaw);
 
 /**
  * RPX - RenPy RPA Extractor Library
@@ -13,12 +25,23 @@ class RPX {
   /**
    * Create an RPX instance
    * @param {string} filePath - Path to the RPA file
+   * @param {Object} options - Extraction options
+   * @param {boolean} options.decompileRPYC - Whether to decompile RPYC files (default: true)
+   * @param {boolean} options.overwriteRPY - Whether to overwrite existing RPY files (default: false)
+   * @param {boolean} options.tryHarder - Whether to use try-harder mode for decompilation (default: false)
+   * @param {boolean} options.debug - Whether to enable debug logging (default: false)
    */
-  constructor(filePath) {
+  constructor(filePath, options = {}) {
     this.filePath = filePath;
     this.header = null;
     this.index = null;
     this.version = null;
+    this.decompileRPYC = options.decompileRPYC !== false; // Default true
+    this.overwriteRPY = options.overwriteRPY || false;
+    this.tryHarder = options.tryHarder || false;
+    this.keepRpycFiles = options.keepRpycFiles || false; // Default false
+    this.debug = options.debug || false;
+    this.decompiler = null;
   }
 
   /**
@@ -114,12 +137,6 @@ class RPX {
     // Extract index data
     const indexBuffer = fileBuffer.subarray(indexOffset);
     
-    // Decompress the index data
-    const zlib = require('zlib');
-    const { promisify } = require('util');
-    const inflate = promisify(zlib.inflate);
-    const inflateRaw = promisify(zlib.inflateRaw);
-    
     try {
       let decompressedIndex;
       try {
@@ -214,7 +231,7 @@ class RPX {
    * Extract a file from the RPA archive
    * @param {string} fileName - Name of the file to extract
    * @param {string} outputPath - Path to extract the file to
-   * @returns {Promise<void>}
+   * @returns {Promise<{extracted: boolean, decompiled?: boolean}>}
    */
   async extractFile(fileName, outputPath) {
     if (!this.index) {
@@ -238,14 +255,37 @@ class RPX {
 
     // Write extracted file
     await fs.promises.writeFile(outputPath, fileData);
+
+    const result = { extracted: true };
+
+    // Decompile if it's an RPYC file and decompilation is enabled
+    if (this.decompileRPYC && (fileName.endsWith('.rpyc') || fileName.endsWith('.rpymc'))) {
+      if (!this.decompiler) {
+        this.decompiler = new RPYCDecompiler({
+          autoDecompile: true,
+          overwrite: this.overwriteRPY,
+          tryHarder: this.tryHarder,
+          keepRpycFiles: this.keepRpycFiles,
+          debug: this.debug
+        });
+        await this.decompiler.init();
+      }
+
+      const decompileResult = await this.decompiler.decompileFile(outputPath);
+      result.decompiled = decompileResult.success;
+    }
+
+    return result;
   }
 
   /**
    * Extract all files from the RPA archive
    * @param {string} outputDir - Directory to extract files to
-   * @returns {Promise<void>}
+   * @param {object} options - Extraction options
+   * @param {function} options.onProgress - Progress callback function
+   * @returns {Promise<{extracted: number, decompiled?: number, failed?: number}>}
    */
-  async extractAll(outputDir) {
+  async extractAll(outputDir, options = {}) {
     if (!this.index) {
       await this.parseIndex();
     }
@@ -255,10 +295,94 @@ class RPX {
 
     // Extract all files
     const files = Object.keys(this.index);
-    for (const fileName of files) {
+    const extractedFiles = [];
+    const onProgress = options.onProgress;
+
+    if (onProgress) {
+      onProgress({ stage: 'extract', current: 0, total: files.length, message: 'Starting extraction...' });
+    }
+
+    for (let i = 0; i < files.length; i++) {
+      const fileName = files[i];
       const outputPath = path.join(outputDir, fileName);
       await this.extractFile(fileName, outputPath);
+      extractedFiles.push(outputPath);
+
+      if (onProgress) {
+        onProgress({
+          stage: 'extract',
+          current: i + 1,
+          total: files.length,
+          message: `Extracted ${fileName}`
+        });
+      }
     }
+
+    const result = { extracted: files.length };
+
+    // Decompile RPYC files if enabled
+    if (this.decompileRPYC) {
+      if (!this.decompiler) {
+        this.decompiler = new RPYCDecompiler({
+          autoDecompile: true,
+          overwrite: this.overwriteRPY,
+          tryHarder: this.tryHarder,
+          keepRpycFiles: this.keepRpycFiles,
+          debug: this.debug
+        });
+        await this.decompiler.init();
+      }
+
+      const rpycFiles = await this.decompiler._findRpycFiles(outputDir);
+      // Runtime detection (best-effort) for summary and initial note
+      let runtimeInfo = null;
+      try {
+        if (rpycFiles.length > 0 && this.decompiler.unrpyc?.detectRpycRuntime) {
+          const info = await this.decompiler.unrpyc.detectRpycRuntime(rpycFiles[0]);
+          if (info) runtimeInfo = info;
+        }
+      } catch (e) { /* ignore detection errors */ }
+
+      // Node-side fallback to avoid UNKNOWN in summary
+      if (
+        rpycFiles.length > 0 &&
+        (!runtimeInfo || !runtimeInfo.renpyMajor || runtimeInfo.renpyMajor === 'unknown' || !runtimeInfo.pythonMajor || runtimeInfo.format === 'UNKNOWN')
+      ) {
+        const fallbackInfo = await detectRuntimeByBytes(rpycFiles[0]);
+        if (fallbackInfo) runtimeInfo = fallbackInfo;
+      }
+
+      const classifiedRuntime = runtimeInfo ? classifyRuntime(runtimeInfo) : null;
+
+      if (onProgress) {
+        const detectNote = classifiedRuntime ? ` (Detected ${classifiedRuntime.label})` : '';
+        onProgress({
+          stage: 'decompile',
+          current: 0,
+          total: rpycFiles.length,
+          message: `Starting decompilation of ${rpycFiles.length} RPYC files...${detectNote}`
+        });
+      }
+
+      const decompileResult = await this.decompiler.processExtractedFiles(outputDir, { onProgress });
+      result.decompiled = decompileResult.decompiled;
+      result.failed = decompileResult.failed;
+      result.replaced = decompileResult.replaced;
+      if (classifiedRuntime) {
+        result.runtime = classifiedRuntime;
+      }
+
+      if (onProgress && decompileResult.decompiled > 0) {
+        onProgress({
+          stage: 'complete',
+          current: decompileResult.decompiled,
+          total: decompileResult.decompiled,
+          message: `Completed decompilation of ${decompileResult.decompiled} files`
+        });
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -278,25 +402,158 @@ class RPX {
  * Extract an RPA file
  * @param {string} filePath - Path to the RPA file
  * @param {string} outputDir - Directory to extract files to
- * @returns {Promise<void>}
+ * @param {Object} options - Extraction options
+ * @returns {Promise<{extracted: number, decompiled?: number, failed?: number}>}
  */
-async function extract(filePath, outputDir) {
-  const rpx = new RPX(filePath);
-  await rpx.extractAll(outputDir);
+async function extract(filePath, outputDir, options = {}) {
+  const rpx = new RPX(filePath, options);
+  return await rpx.extractAll(outputDir);
 }
 
 /**
  * List files in an RPA archive
  * @param {string} filePath - Path to the RPA file
+ * @param {Object} options - Options (for consistency)
  * @returns {Promise<Array<string>>} List of file names
  */
-async function list(filePath) {
-  const rpx = new RPX(filePath);
+async function list(filePath, options = {}) {
+  const rpx = new RPX(filePath, { decompileRPYC: false, ...options });
   return await rpx.listFiles();
 }
 
-module.exports = {
+export {
   RPX,
   extract,
   list
 };
+
+export default RPX;
+// Best-effort runtime detection by reading file bytes
+function classifyRuntime(info) {
+  const runtime = {
+    format: info?.format || 'UNKNOWN',
+    pythonMajor: typeof info?.pythonMajor === 'number' ? info.pythonMajor : 0,
+    renpyMajor: info?.renpyMajor ?? 'unknown',
+    pickleProtocol: typeof info?.pickleProtocol === 'number' ? info.pickleProtocol : -1,
+    scriptVersion: info?.scriptVersion ?? null,
+    hasInitOffset: Boolean(info?.hasInitOffset),
+    chunks: info?.chunks ?? null,
+    confidence: info?.confidence || 'low',
+    build: info?.build ?? null,
+    notes: [],
+  };
+
+  const { format, pythonMajor, scriptVersion, hasInitOffset, pickleProtocol } = runtime;
+
+ if (format === 'RPC1') {
+    runtime.renpyMajor = 6;
+    runtime.label = "Ren'Py ≤ 6.17 (legacy RPC1)";
+    runtime.notes.push('RPC1 header (pre-6.18 format)');
+  } else if (format === 'RPC2' && pythonMajor >= 3) {
+    runtime.renpyMajor = 8;
+    runtime.label = "Ren'Py 8.x (Python 3)";
+    runtime.notes.push('RPC2 header');
+    if (pickleProtocol >= 0) runtime.notes.push(`Pickle protocol v${pickleProtocol} (Python 3)`);
+  } else if (format === 'RPC2') {
+    runtime.renpyMajor = 6;
+    runtime.label = "Ren'Py 6.x (Python 2)";
+    runtime.notes.push('RPC2 header');
+    if (typeof scriptVersion === 'number') {
+      runtime.notes.push(`script_version=${scriptVersion}`);
+      if (scriptVersion >= 7000000) {
+        runtime.renpyMajor = 7;
+        runtime.label = "Ren'Py 7.x (Python 2)";
+      } else if (scriptVersion >= 6000000) {
+        runtime.renpyMajor = '6.99';
+        runtime.label = "Ren'Py 6.99.x (Python 2)";
+      } else if (scriptVersion >= 5000000) {
+        runtime.label = "Ren'Py 6.18–6.98 (Python 2)";
+      }
+    }
+    if (pickleProtocol >= 0) runtime.notes.push(`Pickle protocol v${pickleProtocol} (Python 2)`);
+    if (hasInitOffset) runtime.notes.push('init offset statements detected');
+  } else {
+    runtime.label = 'Unknown runtime';
+    runtime.notes.push('Unrecognized RPYC format');
+  }
+
+  if (runtime.build) runtime.notes.push(`build=${runtime.build}`);
+
+  return runtime;
+}
+
+async function detectRuntimeByBytes(filePath) {
+  try {
+    const raw = await fs.promises.readFile(filePath);
+    const ascii = raw.subarray(0, 12).toString('ascii');
+    if (ascii.startsWith('RENPY RPC2')) {
+      let pos = 10;
+      let slot1 = null;
+      while (pos + 12 <= raw.length) {
+        const slot = raw.readUInt32LE(pos);
+        const start = raw.readUInt32LE(pos + 4);
+        const length = raw.readUInt32LE(pos + 8);
+        pos += 12;
+        if (slot === 0) break;
+        if (slot === 1) slot1 = { start, length };
+      }
+      if (slot1 && slot1.start + slot1.length <= raw.length) {
+        const chunk = raw.subarray(slot1.start, slot1.start + slot1.length);
+        try {
+          const data = await inflate(chunk);
+          let protocol = -1;
+          if (data.length >= 2 && data[0] === 0x80) {
+            protocol = data[1];
+          }
+          const pythonMajor = protocol >= 3 ? 3 : 2;
+          const renpyMajor = pythonMajor >= 3 ? 8 : 7;
+          return {
+            format: 'RPC2',
+            pythonMajor,
+            renpyMajor,
+            pickleProtocol: protocol,
+            confidence: 'medium',
+            scriptVersion: null,
+            hasInitOffset: false,
+          };
+        } catch {
+          return {
+            format: 'RPC2',
+            pythonMajor: 2,
+            renpyMajor: 7,
+            pickleProtocol: -1,
+            confidence: 'low',
+            scriptVersion: null,
+            hasInitOffset: false,
+          };
+        }
+      }
+      return {
+        format: 'RPC2',
+        pythonMajor: 2,
+        renpyMajor: 7,
+        pickleProtocol: -1,
+        confidence: 'low',
+        scriptVersion: null,
+        hasInitOffset: false,
+      };
+    }
+
+    try {
+      await inflate(raw);
+      return {
+        format: 'RPC1',
+        pythonMajor: 2,
+        renpyMajor: 6,
+        pickleProtocol: 2,
+        confidence: 'medium',
+        scriptVersion: null,
+        hasInitOffset: false,
+      };
+    } catch {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+}

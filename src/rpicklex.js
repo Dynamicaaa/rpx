@@ -833,6 +833,12 @@
     RPickleX.PROTOCOL_4 = 4;
     RPickleX.PROTOCOL_5 = 5;
 
+    // ES6 export for compatibility
+    if (typeof module !== 'undefined' && module.exports) {
+        // For ES modules compatibility
+        module.exports.default = RPickleX;
+    }
+
     // Convenience method for loading from different input types
     RPickleX.prototype.load = function(input) {
         if (input instanceof ArrayBuffer) {
