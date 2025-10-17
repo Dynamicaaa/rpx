@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 import fs from 'fs';
 import path from 'path';
@@ -7,7 +7,7 @@ import { hideBin } from 'yargs/helpers';
 import chalk from 'chalk';
 import ora from 'ora';
 import cliProgress from 'cli-progress';
-import { RPX, extract, list } from '../src/index.js';
+import { RPX, extract, list, createArchive } from '../src/index.js';
 import gradient from 'gradient-string';
 
 // Determine package version for banner/help
@@ -99,6 +99,58 @@ const argv = yargs(hideBin(process.argv))
         .option('verbose', {
           alias: 'v',
           describe: chalk.cyan('Show detailed content breakdown'),
+          type: 'boolean',
+          default: false,
+        })
+  )
+  .command(
+    'create',
+    chalk.green('Create an RPA archive'),
+    (yargs) =>
+      yargs
+        .option('input', {
+          alias: 'i',
+          describe: chalk.cyan('Path to the file or directory to pack'),
+          demandOption: true,
+          type: 'string',
+        })
+        .option('output', {
+          alias: 'o',
+          describe: chalk.cyan('Output RPA file path'),
+          demandOption: true,
+          type: 'string',
+        })
+        .option('header', {
+          alias: 'v',
+          describe: chalk.cyan('RPA version header (e.g., 1.0, 2.0, 3.0, 3.2, 4.0)'),
+          type: 'string',
+          default: '3.0',
+        })
+        .option('key', {
+          alias: 'k',
+          describe: chalk.cyan('XOR key in hex for RPA-3.x/4.x archives'),
+          type: 'string',
+        })
+        .option('protocol', {
+          describe: chalk.cyan('Pickle protocol (defaults based on version)'),
+          type: 'number',
+        })
+        .option('marker', {
+          describe: chalk.cyan('Include "Made with Ren\'Py." markers (use --no-marker to disable when available)'),
+          type: 'boolean',
+        })
+        .option('include-hidden', {
+          describe: chalk.cyan('Include dotfiles when packaging directories'),
+          type: 'boolean',
+          default: false,
+        })
+        .option('force', {
+          describe: chalk.cyan('Overwrite existing output files'),
+          type: 'boolean',
+          default: false,
+        })
+        .option('debug', {
+          describe: chalk.cyan('Enable verbose debug logging'),
           type: 'boolean',
           default: false,
         })
@@ -471,6 +523,69 @@ async function handleInfoCommand(argv) {
   }
 }
 
+async function handleCreateCommand(argv) {
+  const { input, output, header, key, protocol, marker, includeHidden, force, debug } = argv;
+
+  if (!fs.existsSync(input)) {
+    console.error(chalk.red('✖ ') + chalk.bold(`Input path not found: ${input}`));
+    process.exit(1);
+  }
+
+  const resolvedOutput = path.resolve(output);
+  if (!force && fs.existsSync(resolvedOutput)) {
+    console.error(chalk.red('✖ ') + chalk.bold(`Output file already exists: ${resolvedOutput} (use --force to overwrite)`));
+    process.exit(1);
+  }
+
+  const spinner = ora({
+    text: 'Building archive...',
+    color: 'cyan',
+    spinner: 'dots',
+    isEnabled: isTTY
+  }).start();
+
+  try {
+    const result = await createArchive({
+      input,
+      output: resolvedOutput,
+      version: header,
+      key,
+      pickleProtocol: protocol,
+      marker,
+      includeHidden,
+      debug,
+      force,
+    });
+
+    spinner.succeed(chalk.green('✔ Archive created'));
+
+    console.log(`${chalk.cyan('Output:')}        ${chalk.yellow(resolvedOutput)}`);
+    if (result.indexFile && result.indexFile !== resolvedOutput) {
+      console.log(`${chalk.cyan('Index:')}         ${chalk.yellow(result.indexFile)}`);
+    }
+    console.log(`${chalk.cyan('Version:')}       ${chalk.yellow(result.version)}`);
+    if (result.key !== null && result.key !== undefined) {
+      const keyHex = (result.key >>> 0).toString(16).toUpperCase().padStart(8, '0');
+      console.log(`${chalk.cyan('XOR Key:')}       ${chalk.yellow('0x' + keyHex)}`);
+    }
+    if (typeof result.indexOffset === 'number') {
+      const offsetHex = result.indexOffset.toString(16).toUpperCase();
+      console.log(`${chalk.cyan('Index Offset:')}  ${chalk.yellow(`${result.indexOffset} (${offsetHex})`)}`);
+    }
+    console.log(`${chalk.cyan('Files:')}         ${chalk.yellow(result.files)}`);
+    if (typeof result.dataBytes === 'number') {
+      console.log(`${chalk.cyan('Data Size:')}     ${chalk.yellow(formatSize(result.dataBytes))}`);
+    }
+  } catch (error) {
+    spinner.fail(chalk.red('✖ Failed to create archive'));
+    console.error(chalk.red('\nError: ') + error.message);
+    if (debug && error.stack) {
+      console.error(chalk.gray(error.stack));
+    }
+    process.exit(1);
+  }
+}
+
 // Main CLI function
 async function main() {
   try {
@@ -485,6 +600,9 @@ async function main() {
         break;
       case 'info':
         await handleInfoCommand(argv);
+        break;
+      case 'create':
+        await handleCreateCommand(argv);
         break;
       default:
         console.error(chalk.red('✖ ') + `Unknown command: ${command}`);
@@ -502,6 +620,7 @@ main();
 export {
   handleExtractCommand,
   handleListCommand,
-  handleInfoCommand
+  handleInfoCommand,
+  handleCreateCommand
 };
 

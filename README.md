@@ -1,12 +1,10 @@
-<div align="center">
+﻿<div align="center">
   
   <img src="images/logo.png" alt="Sayonika" width="400" height="200">
   
-  <h3>✨ Extract RenPy game archives with ease ✨</h3>
+  <h3>✨ A mutli-purpose Ren'Py tool ✨</h3>
   
   <br>
-  
-  <h4>🌟 Modern, feature-rich RPA extraction library for Node.js 🌟</h4>
   
   <br>
   
@@ -16,433 +14,169 @@
   
 </div>
 
-<div align="center">
+RPX is a modern JavaScript implementation of the Ren'Py archive toolchain. It bundles a feature-rich CLI and a fully documented library so you can inspect, extract, or build `.rpa` archives directly from Node.js.
 
-## ✨ Features
+- Supports every official archive header (`RPA-1.0` through `RPA-4.0`).
+- Understands legacy `.rpi` index files and modern embedded indexes.
+- Automatically decompiles `.rpyc` scripts via bundled `unrpyc-js` helpers.
+- Detects the originating Ren''Py/Python runtime using heuristics.
+- Published as an ES module – integrate it with build tools, scripts, or other CLIs.
 
-<br>
+> Extensive guides live in the [`docs/`](docs/README.md) folder. This README highlights the essentials.
 
-</div>
+## Table of Contents
 
-<center>
-<div align="center">
-<table style="margin: 0 auto; border-collapse: collapse; width: 90%; max-width: 800px; margin-left: auto; margin-right: auto; display: table;">
-<tr>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">🌟 <strong>Core Features</strong></th>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">🚀 <strong>Advanced Features</strong></th>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🎯 <strong>Multi-Version Support</strong> - RPA-1.0 to RPA-4.0 compatibility</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🔍 <strong>Smart Decompression</strong> - Automatic zlib handling with fallback</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">📦 <strong>Dual Interface</strong> - CLI tool and Node.js module</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">⭐ <strong>XOR Decryption</strong> - Handle encrypted RPA archives</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🔐 <strong>Pickle Parsing</strong> - Uses RPickleX which is custom-made for RPX</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🏷️ <strong>File Listing</strong> - Enumerate archive contents</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🌐 <strong>Cross-Platform</strong> - Works on Windows, macOS, and Linux</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">👤 <strong>Error Handling</strong> - Comprehensive error management</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🎨 <strong>Modern Design</strong> - Clean, asynchronous API</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🛡️ <strong>Performance</strong> - Efficient memory usage and caching</td>
-</tr>
-</table>
-</div>
-</center>
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Command Line Usage](#command-line-usage)
+- [Programmatic API](#programmatic-api)
+- [Archive Creation Reference](#archive-creation-reference)
+- [Runtime Detection](#runtime-detection)
+- [Documentation & Support](#documentation--support)
+- [Contributing](#contributing)
+- [License](#license)
 
-<div align="center">
+## Installation
 
----
-
-</div>
-
-<div align="center">
-
-## 🤔 Why RPX?
-
-</div>
-
-<div align="center">
-
-### 📈 **The Evolution of RPA Extraction**
-
-</div>
-
-While there have been various RPA extraction tools, **RPX** represents the next generation of RPA handling libraries. Built with modern JavaScript and Node.js, it addresses the limitations of previous solutions:
-
-<center>
-<div align="center">
-<table style="margin: 0 auto; border-collapse: collapse; width: 70%; max-width: 600px; margin-left: auto; margin-right: auto; display: table;">
-<tr>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">✅ <strong>RPX Advantages</strong></th>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;"><strong>Full version support</strong> - Handles all RPA formats from 1.0 to 4.0</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;"><strong>Active development</strong> with regular updates and new features</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;"><strong>Modern JavaScript</strong> with async/await and Promises</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;"><strong>Comprehensive API</strong> for both programmatic and CLI usage</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;"><strong>Robust error handling</strong> with descriptive error messages</td>
-</tr>
-</table>
-</div>
-</center>
-
-<div align="center">
-
-### 🆚 **Why Choose RPX Over Alternatives?**
-
-</div>
-
-RPX offers significant advantages over other RPA extraction methods:
-
-<center>
-<div align="center">
-<table style="margin: 0 auto; border-collapse: collapse; width: 90%; max-width: 800px; margin-left: auto; margin-right: auto; display: table;">
-<tr>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #e8f5e8; font-weight: bold;">🏆 <strong>RPX</strong></th>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #fff2e8; font-weight: bold;">📁 <strong>Traditional Tools</strong></th>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f8fff8;">✅ <strong>Complete Version Support</strong><br/><em>All RPA formats handled</em></td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #fff8f8;">❌ <strong>Limited Compatibility</strong><br/><em>Only specific versions</em></td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f8fff8;">✅ <strong>Dual Interface</strong><br/><em>CLI and programmatic access</em></td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #fff8f8;">❌ <strong>Single Interface</strong><br/><em>Only command-line or library</em></td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f8fff8;">✅ <strong>Modern JavaScript</strong><br/><em>Async/await and Promises</em></td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #fff8f8;">❌ <strong>Legacy Code</strong><br/><em>Callback-based or synchronous</em></td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f8fff8;">✅ <strong>Active Maintenance</strong><br/><em>Regular updates and fixes</em></td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #fff8f8;">❌ <strong>Abandoned Projects</strong><br/><em>No ongoing development</em></td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f8fff8;">✅ <strong>Comprehensive Testing</strong><br/><em>Verified with real RPA files</em></td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #fff8f8;">❌ <strong>Limited Testing</strong><br/><em>Untested with various formats</em></td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f8fff8;">✅ <strong>Error Recovery</strong><br/><em>Graceful handling of issues</em></td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #fff8f8;">❌ <strong>Crash-Prone</strong><br/><em>Failures on malformed files</em></td>
-</tr>
-</table>
-</div>
-</center>
-
-<div align="center">
-
-<br>
-
-> 💡 **RPX combines the accessibility of a CLI tool with the power of a programmatic library, making RPA extraction simple and reliable.**
-
-</div>
-
-<div align="center">
-
----
-
-## 🚀 Quick Start
-
-<br>
-
-### 📦 **Installation**
-
-</div>
+Node.js 16 or later is recommended.
 
 ```bash
-# Install globally for CLI usage
-npm install -g @dynamicaaa/rpx
-
-# Or install locally for programmatic usage
+# Install locally
 npm install @dynamicaaa/rpx
+
+# Use the CLI via npx
+npx @dynamicaaa/rpx --help
 ```
 
-<div align="center">
-
-### 🌐 **CLI Usage**
-
-</div>
+To install the CLI globally:
 
 ```bash
-# Extract all files from an RPA archive
-rpx extract -i game.rpa -o extracted/
-
-# Extract a specific file
-rpx extract -i game.rpa -o extracted/ -f "script.rpy"
-
-# List files in an RPA archive
-rpx list -i game.rpa
-
-# Show information about an RPA archive
-rpx info -i game.rpa
+npm install -g @dynamicaaa/rpx
 ```
 
-<div align="left">
+## Quick Start
 
-#### CLI Options
-
-- `rpx extract`
-  - `-i, --input <path>`: RPA file to extract (required)
-  - `-o, --output <dir>`: Output directory (required)
-  - `--no-decompile`: Skip RPYC decompilation
-  - `--overwrite`: Overwrite existing RPY files
-  - `--try-harder`: Try-harder mode for decompilation
-  - `--keep-rpyc`: Keep original `.rpyc` files after decompilation
-
-- `rpx list`
-  - `-i, --input <path>`: RPA file to inspect (required)
-  - `-f, --filter <suffix>`: Only include files ending with this (e.g., `.rpyc`, `.png`)
-  - `-s, --sort <field>`: Sort by `name` (default), `size`, or `ext`
-  - `-S, --size`: Show file sizes in the listing
-
-- `rpx info`
-  - `-i, --input <path>`: RPA file to inspect (required)
-  - `-v, --verbose`: Show detailed content breakdown
-
-</div>
-
-#### RPYC Runtime Detection
-
-- Extraction now auto-detects the Ren'Py runtime generation (legacy RPC1, 6.x/7.x Python 2 RPC2, or 8.x Python 3).
-- Heuristics combine the file header, RPC chunk table, pickle protocol, script metadata (`script_version`, `build`), and the presence of `init_offset` statements for finer classification.
-- The CLI summary surfaces the detected label, pickle protocol, confidence, and the heuristics that led to the verdict, so you immediately know which toolchain is required.
-
-Example summary:
-
-```text
-Runtime:        Ren'Py 6.18–6.98 (Python 2) - RPC2 (pickle v2)
-Script ver:     5003000
-Confidence:     high
-Detection:      RPC2 header; script_version=5003000; Pickle protocol v2 (Python 2)
-```
-
-Programmatic access is available via the bundled wrapper:
-
-```js
-import UnrpycJS from '@dynamicaaa/rpx/unrpyc-js/index.js';
-
-const unrpyc = new UnrpycJS();
-const runtime = await unrpyc.detectRpycRuntime('game/script-ch0.rpyc');
-console.log(runtime.label); // e.g. "Ren'Py 7.x (Python 2)"
-```
-
-<div align="center">
-
-### 💻 **Programmatic Usage**
-
-</div>
-
-```js
-import { RPX, extract, list } from '@dynamicaaa/rpx';
-
-// Create an RPX instance
-const rpx = new RPX('game.rpa');
-
-// Extract all files
-await rpx.extractAll('extracted/');
-
-// Extract a specific file
-await rpx.extractFile('script.rpy', 'extracted/script.rpy');
-
-// List all files
-const files = await rpx.listFiles();
-console.log(files);
-
-// Or use convenience functions
-await extract('game.rpa', 'extracted/');
-const fileList = await list('game.rpa');
-```
-
-<div align="center">
-
----
-
-## 🛠️ Development
-
-<br>
-
-### **Run from Source**
-
-</div>
+### CLI
 
 ```bash
-# Clone the repository
-git clone https://github.com/Dynamicaaa/rpx
-cd rpx
+# Extract an archive
+rpx extract -i game.rpa -o extracted
 
-# Install dependencies
-npm install
+# Display archive metadata
+rpx info -i game.rpa --verbose
 
-# Test the library
-npm test
-
-# Use the CLI
-rpx --help
+# Package a build
+rpx create -i dist/game -o dist/game.rpa --header 4.0
 ```
 
-<div align="center">
+### Programmatic Usage
 
-> Note: RPX uses the published `@dynamicaaa/pyrunner` npm package under the hood (via the bundled `unrpyc-js` wrapper). No local `pyrunner/` source folder is required.
+```js
+import { RPX, extract, list, createArchive } from '@dynamicaaa/rpx';
 
-### **API Documentation**
+// Inspect an archive
+const archive = new RPX('game.rpa');
+await archive.readHeader();
+await archive.parseIndex();
+console.log('Files:', await archive.listFiles());
 
-</div>
+// Convenience helpers
+await extract('game.rpa', 'extracted');
+const files = await list('game.rpa');
 
-<center>
-<div align="center">
-<table style="margin: 0 auto; border-collapse: collapse; width: 90%; max-width: 800px; margin-left: auto; margin-right: auto; display: table;">
-<tr>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f0f8ff; font-weight: bold;">🎯 <strong>RPX Class</strong></th>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #fff8f0; font-weight: bold;">⚡ <strong>Convenience Functions</strong></th>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🔍 <strong>new RPX(filePath)</strong> - Create extractor instance</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">⚡ <strong>extract(filePath, outputDir)</strong> - Extract all files</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">📊 <strong>readHeader()</strong> - Parse archive header</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">👤 <strong>list(filePath)</strong> - List archive contents</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🏷️ <strong>parseIndex()</strong> - Parse file index</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">⭐ <strong>Automatic</strong> - No instance management needed</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">📦 <strong>extractFile(name, path)</strong> - Extract single file</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🛡️ <strong>Promise-based</strong> - Modern async handling</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">⚡ <strong>extractAll(path)</strong> - Extract all files</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🔧 <strong>Flexible</strong> - Choose what works best</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🔍 <strong>listFiles()</strong> - Get file list</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🎯 <strong>Efficient</strong> - Cached results</td>
-</tr>
-</table>
-</div>
-</center>
+// Create an archive targeting RPA-4.0
+await createArchive({
+  input: 'build/game',
+  output: 'dist/game.rpa',
+  version: '4.0',
+  key: '0x42',
+});
+```
 
-<div align="center">
+## Command Line Usage
 
----
+| Command | Description |
+| ------- | ----------- |
+| `rpx extract` | Extract an archive to disk (with optional `.rpyc` decompilation). |
+| `rpx list` | List archive contents with optional sorting/filtering. |
+| `rpx info` | Display header information, heuristics, and index statistics. |
+| `rpx create` | Package files into a new `.rpa` archive (supports headers 1.0 – 4.0). |
 
-## 🐛 Debug Tools
+Each command accepts the same flags documented in [docs/cli.md](docs/cli.md). Run `rpx <command> --help` for a concise reminder.
 
-<br>
+## Programmatic API
 
-Set these environment variables to enable debugging features:
+> Need a standalone `.rpyc` decompiler? Install [`@dynamicaaa/unrpyc-js`](unrpyc-js/README.md) which powers RPX under the hood.
 
-<br>
+The core exports are fully documented with JSDoc and summarised in [docs/api.md](docs/api.md). Highlights include:
 
-</div>
+- `new RPX(filePath, options)` – read metadata, list files, and extract payloads.
+- `extract(filePath, outputDir, options?)` – convenience wrapper around `RPX.extractAll()`.
+- `list(filePath, options?)` – list archive paths without instantiating the class manually.
+- `createArchive(options)` – build archives (including legacy `.rpi` files, XOR keys, and markers).
+- `classifyRuntime(info)` – normalise runtime detection details for display in custom tooling.
 
-<center>
-<div align="center">
-<table style="margin: 0 auto; border-collapse: collapse; width: 80%; max-width: 700px; margin-left: auto; margin-right: auto; display: table;">
-<tr>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">🔧 <strong>Variable</strong></th>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f8f9fa; font-weight: bold;">📋 <strong>Purpose</strong></th>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; font-family: monospace; background-color: #f0f0f0;"><code>NODE_ENV</code></td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🔧 Set to 'development' for debug mode</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; font-family: monospace; background-color: #f0f0f0;"><code>DEBUG</code></td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🔍 Enable detailed logging output</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd; font-family: monospace; background-color: #f0f0f0;"><code>RPX_DEBUG</code></td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">📦 Enable RPX-specific debugging</td>
-</tr>
-</table>
-</div>
-</center>
+All functions return Promises and reject with descriptive `Error` objects when something fails. Debug logging (including Python stdout/stderr) can be enabled by passing `debug: true` in the relevant options.
 
-<div align="center">
+## Archive Creation Reference
 
----
+`createArchive` accepts a rich configuration object. The most important fields are:
 
-## 🤝 Contributing
+| Option | Description |
+| ------ | ----------- |
+| `input` | Source directory or file. |
+| `output` | Destination archive path. |
+| `version` | Target header (`1.0`, `2.0`, `3.0`, `3.2`, `4.0`) – defaults to `3.0`. |
+| `key` | XOR key (hex string or number) for RPA-3.x/4.x archives. |
+| `marker` | Toggle the `Made with Ren'Py.` padding marker (where supported). |
+| `includeHidden` | Include dotfiles when packaging directories. |
+| `force` | Overwrite existing output files. |
+| `pickleProtocol` | Override the pickle protocol (defaults automatically for each version). |
 
-<br>
+Return value:
 
-We welcome contributions! Here's how you can help:
+```ts
+interface CreateArchiveResult {
+  version: string;
+  output: string;
+  files: number;
+  dataBytes: number;
+  key: number | null;
+  indexOffset: number | null;
+  indexFile: string | null; // present for RPA-1.0 archives
+}
+```
 
-<br>
+See [docs/examples.md](docs/examples.md) for automation recipes, including legacy archive creation, custom XOR obfuscation, and TypeScript integration.
 
-</div>
+## Runtime Detection
 
-<center>
-<div align="center">
-<table style="margin: 0 auto; border-collapse: collapse; width: 90%; max-width: 800px; margin-left: auto; margin-right: auto; display: table;">
-<tr>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #fff0f0; font-weight: bold;">🐛 <strong>Bug Reports</strong></th>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f0f0ff; font-weight: bold;">💡 <strong>Feature Requests</strong></th>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🔍 <strong>Find Issues</strong> - Help us identify problems</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🚀 <strong>Suggest Features</strong> - Share your creative ideas</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">📝 <strong><a href="https://github.com/Dynamicaaa/rpx/issues/new" style="text-decoration: none;">Create Reports</a></strong> - Detailed bug descriptions</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🎯 <strong>Improve UX</strong> - Help make the library better</td>
-</tr>
-<tr>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #f0fff0; font-weight: bold;">🔧 <strong>Code Contributions</strong></th>
-<th style="text-align: center; padding: 12px; border: 1px solid #ddd; background-color: #fff8f0; font-weight: bold;">📖 <strong>Documentation</strong></th>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">📄 <strong>Submit Pull Requests</strong> - Help improve the codebase</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">✍️ <strong>Improve Docs</strong> - Make things clearer for everyone</td>
-</tr>
-<tr>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🧪 <strong>Write Tests</strong> - Ensure code quality</td>
-<td style="text-align: center; padding: 12px; border: 1px solid #ddd;">🌍 <strong>Examples</strong> - Help others learn</td>
-</tr>
-</table>
-</div>
-</center>
+The library analyses the archive index and payload to infer the originating Ren'Py runtime:
 
-<div align="center">
+- Detects whether the archive targets Ren'Py 6.x / 7.x (Python 2) or Ren'Py 8.x (Python 3).
+- Surfaces pickle protocol versions and `script_version` metadata when available.
+- Provides qualitative confidence levels and raw diagnostic notes.
 
----
+CLI commands automatically print this information in the summary. Programmatic consumers can use `classifyRuntime()` to tailor the display for their own tools.
 
-## 📄 Licenses and Acknowledgements
+## Documentation & Support
 
-<br>
+- [Project overview](docs/overview.md)
+- [CLI usage guide](docs/cli.md)
+- [JavaScript API reference](docs/api.md)
+- [Recipes & examples](docs/examples.md)
+- [Troubleshooting](docs/troubleshooting.md)
 
-**📜 RPX** is licensed under the [**MIT License**](LICENSE)
+If you encounter a bug or need an enhancement, [open an issue](https://github.com/Dynamicaaa/rpx/issues/new) with reproduction details.
 
-<br>
+## Contributing
 
-This library uses the following dependencies:
-- **RPickleX** - Custom-made for RPX Python pickle format handling
-- **yargs** - For command-line argument parsing
+Pull requests are welcome! Please:
 
-<br>
+1. Run linting/tests relevant to your changes.
+2. Update documentation where applicable.
+3. Describe the motivation and edge cases in your PR description.
 
----
+## License
 
-</div>
-
-<div align="center">
-
-Built with ❤️ for the RenPy modding community
-
-</div>
+MIT © Dynamicaaa

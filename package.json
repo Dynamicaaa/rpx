@@ -23,6 +23,7 @@
   "license": "MIT",
   "dependencies": {
     "@dynamicaaa/pyrunner": "^1.0.0",
+    "@dynamicaaa/unrpyc-js": "^1.0.0",
     "chalk": "^5.6.2",
     "cli-progress": "^3.12.0",
     "gradient-string": "^3.0.0",
@@ -41,7 +42,8 @@
     "bin/",
     "unrpyc-js/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "docs/"
   ],
   "repository": {
     "type": "git",

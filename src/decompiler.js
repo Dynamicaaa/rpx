@@ -36,7 +36,7 @@ class RPYCDecompiler {
 
     try {
       // Use the bundled UnrpycJS wrapper which depends on the npm PyRunner package
-      const mod = await import('../unrpyc-js/index.js');
+      const mod = await import('@dynamicaaa/unrpyc-js');
       const UnrpycJS = mod?.default || mod?.UnrpycJS;
       if (!UnrpycJS) throw new Error('UnrpycJS export not found');
 
