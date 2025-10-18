@@ -1475,4 +1475,6 @@ export {
   createArchive,
 };
 
+export { RPX_VERSION } from './config.js';
+
 export default RPX;

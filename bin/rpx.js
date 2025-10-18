@@ -7,15 +7,11 @@ import { hideBin } from 'yargs/helpers';
 import chalk from 'chalk';
 import ora from 'ora';
 import cliProgress from 'cli-progress';
-import { RPX, extract, list, createArchive } from '../src/index.js';
+import { RPX, extract, list, createArchive, RPX_VERSION } from '../src/index.js';
 import gradient from 'gradient-string';
 
 // Determine package version for banner/help
-let pkgVersion = '0.0.0';
-try {
-  const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
-  pkgVersion = pkg.version || pkgVersion;
-} catch {}
+const pkgVersion = RPX_VERSION ?? '0.0.0';
 
 /**
  * RPX CLI - Modern Command Line Interface for RenPy RPA Extractor
