@@ -43,6 +43,7 @@ import fs from 'fs';
 /**
  * @typedef {Object} CreateArchiveResult
  * @property {string} version Header string written to the archive.
+ * @property {string} canonicalVersion Canonical RPA family corresponding to the header.
  * @property {string} output Resolved output path.
  * @property {number} files Number of files written.
  * @property {number} dataBytes Total size of user payload bytes.
@@ -58,7 +59,7 @@ import { PyRunner } from '@dynamicaaa/pyrunner';
 import { RPYCDecompiler } from './decompiler.js';
 
 // Load RPickleX with robust UMD/ESM interop
-let __rpx_mod = await import('./rpicklex.js');
+let __rpx_mod = await import('@dynamicaaa/rpicklex');
 const RPickleX = __rpx_mod?.default || __rpx_mod?.RPickleX || globalThis.RPickleX;
 if (!RPickleX) {
   throw new Error('RPickleX module failed to load');
@@ -66,6 +67,255 @@ if (!RPickleX) {
 
 const inflate = promisify(zlib.inflate);
 const inflateRaw = promisify(zlib.inflateRaw);
+
+const ALT1_EXTRA_KEY = 0xDABE8DF0;
+const ZIX_LOADER_CANDIDATES = ['loader.py', 'loader.pyc', 'loader.pyo', 'loader.rpy'];
+const ZIX_MAGIC_KEYS = [
+  3621826839565189698n,
+  8167163782024462963n,
+  5643161164948769306n,
+  4940859562182903807n,
+  2672489546482320731n,
+  8917212212349173728n,
+  7093854916990953299n,
+];
+const UINT64_MASK = (1n << 64n) - 1n;
+
+const HEADER_SIGNATURE_CANONICALS = new Map([
+  ['RPA-1', 'RPA-1.0'],
+  ['RPA-1.0', 'RPA-1.0'],
+  ['RPA-2', 'RPA-2.0'],
+  ['RPA-2.0', 'RPA-2.0'],
+  ['RPA-3', 'RPA-3.0'],
+  ['RPA-3.0', 'RPA-3.0'],
+  ['RPA-3.2', 'RPA-3.2'],
+  ['RPA-4', 'RPA-4.0'],
+  ['RPA-4.0', 'RPA-4.0'],
+  ['ZIX-12A', 'ZiX-12A'],
+  ['ZIX-12B', 'ZiX-12B'],
+  ['ALT-1.0', 'ALT-1.0'],
+]);
+
+const OBFUSCATED_SIGNATURES = new Set(['ZIX-12A', 'ZIX-12B']);
+const ZLIB_KNOWN_SECOND_BYTES = new Set([0x01, 0x5E, 0x9C, 0xDA]);
+
+function canonicalizeHeaderSignature(signature) {
+  if (!signature) {
+    return null;
+  }
+  const normalized = signature.trim().toUpperCase();
+  const mapped = HEADER_SIGNATURE_CANONICALS.get(normalized);
+  if (mapped) {
+    return mapped;
+  }
+  if (normalized.startsWith('RPA-')) {
+    return normalized;
+  }
+  return null;
+}
+
+async function decompressIndexBuffer(buffer, { allowScan = false, debug = false } = {}) {
+  const tryInflate = async (target) => {
+    try {
+      return await inflate(target);
+    } catch (inflateError) {
+      try {
+        return await inflateRaw(target);
+      } catch (inflateRawError) {
+        const message = `inflate error: ${inflateError.message}, inflateRaw error: ${inflateRawError.message}`;
+        const error = new Error(message);
+        error.cause = { inflateError, inflateRawError };
+        throw error;
+      }
+    }
+  };
+
+  try {
+    return { data: await tryInflate(buffer), skipped: 0 };
+  } catch (initialError) {
+    if (!allowScan || buffer.length === 0) {
+      throw initialError;
+    }
+
+    for (let i = 1; i < buffer.length - 1; i += 1) {
+      if (buffer[i] !== 0x78) {
+        continue;
+      }
+      const second = buffer[i + 1];
+      if (!ZLIB_KNOWN_SECOND_BYTES.has(second)) {
+        continue;
+      }
+
+      try {
+        const data = await tryInflate(buffer.subarray(i));
+        if (debug) {
+          console.warn(`[RPX] Skipped ${i} byte(s) before compressed index to bypass obfuscation.`);
+        }
+        return { data, skipped: i };
+      } catch {
+        // Keep scanning for a valid zlib stream.
+      }
+    }
+
+    throw initialError;
+  }
+}
+
+function decodeZixOffset(token) {
+  if (!token) {
+    throw new Error('Missing encoded offset value in ZiX header');
+  }
+  const data = Buffer.from(token.trim(), 'ascii');
+  if (data.length < 8) {
+    throw new Error('Encoded ZiX offset must contain at least 8 hexadecimal characters');
+  }
+  const seq = Buffer.from([
+    data[7],
+    data[6],
+    data[0],
+    data[1],
+    data[2],
+    data[5],
+    data[4],
+    data[3],
+  ]);
+  return Number.parseInt(seq.toString('ascii'), 16);
+}
+
+function roundCubeRootBigInt(value) {
+  if (value < 0n) {
+    throw new Error('Cannot compute cube root of negative numbers');
+  }
+  if (value === 0n) {
+    return 0;
+  }
+  let high = 1n;
+  while (high ** 3n < value) {
+    high <<= 1n;
+  }
+  let low = high >> 1n;
+  let best = low;
+  while (low <= high) {
+    const mid = (low + high) >> 1n;
+    const midCubed = mid ** 3n;
+    if (midCubed === value) {
+      best = mid;
+      break;
+    }
+    if (midCubed < value) {
+      best = mid;
+      low = mid + 1n;
+    } else {
+      high = mid - 1n;
+    }
+  }
+  const floor = best;
+  const ceil = floor + 1n;
+  const floorDiff = value - floor ** 3n;
+  const ceilDiff = (ceil ** 3n) - value;
+  if (ceilDiff < floorDiff) {
+    return Number(ceil);
+  }
+  if (ceilDiff === floorDiff) {
+    return floor % 2n === 0n ? Number(floor) : Number(ceil);
+  }
+  return Number(floor);
+}
+
+function obfuscationSha1(seed) {
+  const digits = seed.replace(/\D+/g, '') || '0';
+  const a = BigInt(digits) + 102464652121606009n;
+  const cube = roundCubeRootBigInt(a);
+  const result = (cube / 23) * 109;
+  return Math.trunc(result);
+}
+
+function obfuscationRun(buffer, key) {
+  const count = Math.floor(buffer.length / 8);
+  if (count === 0) {
+    return buffer.slice();
+  }
+  const keyBig = BigInt(key >>> 0);
+  const out = Buffer.allocUnsafe(buffer.length);
+  for (let i = 0; i < count; i += 1) {
+    const offset = i * 8;
+    const part = buffer.readBigUInt64LE(offset);
+    const magic = ZIX_MAGIC_KEYS[i % ZIX_MAGIC_KEYS.length];
+    const decoded = (part ^ magic ^ keyBig) & UINT64_MASK;
+    out.writeBigUInt64LE(decoded, offset);
+  }
+  if (buffer.length > count * 8) {
+    buffer.copy(out, count * 8);
+  }
+  return out;
+}
+
+function deobfuscateZix12B(data, key, prefixLength) {
+  if (!prefixLength || prefixLength <= 0) {
+    return data;
+  }
+  const limit = Math.min(prefixLength, data.length);
+  const processed = Math.floor(limit / 8) * 8;
+  if (processed === 0) {
+    return data;
+  }
+  const decodedPrefix = obfuscationRun(data.subarray(0, processed), key);
+  if (processed === data.length) {
+    return decodedPrefix;
+  }
+  const result = Buffer.concat([decodedPrefix, data.subarray(processed)]);
+  return result;
+}
+
+async function findLoaderForArchive(archivePath) {
+  const dir = path.dirname(archivePath);
+  for (const candidate of ZIX_LOADER_CANDIDATES) {
+    const resolved = path.join(dir, candidate);
+    const exists = await pathExists(resolved);
+    if (exists) {
+      return resolved;
+    }
+  }
+  return null;
+}
+
+async function loadLoaderText(loaderPath) {
+  const buffer = await fs.promises.readFile(loaderPath);
+  // Attempt UTF-8 first, fallback to latin1 to preserve byte sequences.
+  let text = buffer.toString('utf8');
+  if (!text.includes('verificationcode')) {
+    text = buffer.toString('latin1');
+  }
+  return text;
+}
+
+function extractZixMetadataFromLoader(loaderText, version) {
+  const seedMatch = loaderText.match(/verificationcode\s*=\s*_string\.sha1\('([^']+)'\)/i);
+  if (!seedMatch) {
+    throw new Error('Unable to locate verification code seed in loader file for ZiX archive');
+  }
+  const key = obfuscationSha1(seedMatch[1]);
+  let prefixLength = null;
+  if (version === 'ZiX-12B') {
+    const runMatch = loaderText.match(/_string\.run\(\s*rv\.read\((\d+)\),\s*verificationcode\)/i);
+    if (runMatch) {
+      prefixLength = Number.parseInt(runMatch[1], 10);
+    } else {
+      throw new Error('Unable to locate obfuscation length in loader file required for ZiX-12B archives');
+    }
+  }
+  return { key, prefixLength };
+}
+
+async function deriveZixMetadata(archivePath, version) {
+  const loaderPath = await findLoaderForArchive(archivePath);
+  if (!loaderPath) {
+    throw new Error('ZiX archives require the accompanying loader file (loader.py/.pyo/.pyc) next to the archive');
+  }
+  const loaderText = await loadLoaderText(loaderPath);
+  const details = extractZixMetadataFromLoader(loaderText, version);
+  return { ...details, loaderPath };
+}
 
 /**
  * RPX - RenPy RPA Extractor Library
@@ -140,36 +390,69 @@ class RPX {
     const actualHeaderString = headerEnd === -1 ? headerString : headerString.substring(0, headerEnd);
 
     const tokens = actualHeaderString.trim().split(/\s+/);
-    const signature = tokens[0];
+    const signature = tokens[0] || '';
+    const canonicalSignature = canonicalizeHeaderSignature(signature);
 
-    if (!signature || !signature.startsWith('RPA-')) {
+    if (!canonicalSignature) {
       this.version = 'RPA-1.0';
       this.header = {
-        version: this.version,
+        version: 'RPA-1.0',
+        canonicalVersion: 'RPA-1.0',
         data: 'RPA-1.0',
         offset: 0,
         key: 0,
+        isAlias: false,
       };
       return this.header;
     }
 
-    this.version = signature;
+    const actualVersion = signature || canonicalSignature;
+    this.version = canonicalSignature;
     this.header = {
-      version: this.version,
-      data: actualHeaderString
+      version: actualVersion,
+      canonicalVersion: canonicalSignature,
+      data: actualHeaderString,
+      isAlias: actualVersion.toUpperCase() !== canonicalSignature.toUpperCase(),
     };
 
-    if (signature === 'RPA-1' || signature === 'RPA-1.0') {
+    if (canonicalSignature === 'RPA-1.0') {
       this.header.offset = 0;
       this.header.key = 0;
-    } else if (signature === 'RPA-2' || signature === 'RPA-2.0') {
+    } else if (canonicalSignature === 'RPA-2.0') {
       const offsetHex = tokens[1];
       if (!offsetHex) {
         throw new Error('Missing index offset in RPA-2.0 header');
       }
       this.header.offset = parseInt(offsetHex, 16);
       this.header.key = 0;
-    } else if (signature === 'RPA-3' || signature === 'RPA-3.0' || signature === 'RPA-3.2') {
+    } else if (canonicalSignature === 'ALT-1.0') {
+      if (tokens.length < 3) {
+        throw new Error('Malformed ALT-1.0 header (expected obfuscated key and offset)');
+      }
+      const storedKey = Number.parseInt(tokens[1], 16);
+      if (!Number.isFinite(storedKey)) {
+        throw new Error('Failed to parse obfuscated XOR key from ALT-1.0 header');
+      }
+      const offsetHex = tokens[2];
+      const offset = Number.parseInt(offsetHex, 16);
+      if (!Number.isFinite(offset)) {
+        throw new Error('Failed to parse index offset from ALT-1.0 header');
+      }
+      const actualKey = (storedKey ^ ALT1_EXTRA_KEY) >>> 0;
+      this.header.offset = offset;
+      this.header.key = actualKey;
+      this.header.obfuscatedKey = storedKey >>> 0;
+    } else if (canonicalSignature === 'ZiX-12A' || canonicalSignature === 'ZiX-12B') {
+      const encodedOffsetToken = tokens[tokens.length - 1];
+      const offset = decodeZixOffset(encodedOffsetToken);
+      const zixDetails = await deriveZixMetadata(this.filePath, canonicalSignature);
+      this.header.offset = offset;
+      this.header.key = zixDetails.key >>> 0;
+      this.header.loader = zixDetails.loaderPath;
+      if (zixDetails.prefixLength) {
+        this.header.zixPrefixLength = zixDetails.prefixLength;
+      }
+    } else if (canonicalSignature === 'RPA-3.0' || canonicalSignature === 'RPA-3.2') {
       const offsetHex = tokens[1];
       const keyHex = tokens[2];
       if (!offsetHex || !keyHex) {
@@ -177,7 +460,7 @@ class RPX {
       }
       this.header.offset = parseInt(offsetHex, 16);
       this.header.key = parseInt(keyHex, 16);
-    } else if (signature === 'RPA-4' || signature === 'RPA-4.0') {
+    } else if (canonicalSignature === 'RPA-4.0') {
       const offsetHex = tokens[1];
       const keyHex = tokens[2];
       if (!offsetHex || !keyHex) {
@@ -186,7 +469,7 @@ class RPX {
       this.header.offset = parseInt(offsetHex, 16);
       this.header.key = parseInt(keyHex, 16);
     } else {
-      throw new Error(`Unsupported RPA version: ${signature}`);
+      throw new Error(`Unsupported RPA version: ${signature || canonicalSignature}`);
     }
 
     return this.header;
@@ -209,7 +492,7 @@ class RPX {
 
     await this.readHeader();
 
-    if (this.version === 'RPA-1' || this.version === 'RPA-1.0') {
+    if (this.version === 'RPA-1.0') {
       const indexPath = await this.resolveLegacyIndexPath();
       const indexBytes = await fs.promises.readFile(indexPath);
       let decompressedIndex;
@@ -240,19 +523,15 @@ class RPX {
     const indexBuffer = fileBuffer.subarray(indexOffset);
     
     try {
-      let decompressedIndex;
-      try {
-        // Try regular inflate first (with headers)
-        decompressedIndex = await inflate(indexBuffer);
-      } catch (inflateError) {
-        // If that fails, try inflateRaw (without headers)
-        try {
-          decompressedIndex = await inflateRaw(indexBuffer);
-        } catch (inflateRawError) {
-          throw new Error(`Failed to decompress index: inflate error: ${inflateError.message}, inflateRaw error: ${inflateRawError.message}`);
-        }
+      const signatureUpper = (this.header.version || '').toUpperCase();
+      const { data: decompressedIndex, skipped } = await decompressIndexBuffer(indexBuffer, {
+        allowScan: OBFUSCATED_SIGNATURES.has(signatureUpper),
+        debug: this.debug,
+      });
+      if (skipped > 0) {
+        this.header.indexJunkPrefix = skipped;
       }
-      
+
       // Parse pickle data using rpicklex
       const picklex = new RPickleX();
       const rawIndex = picklex.loads(decompressedIndex);
@@ -380,7 +659,11 @@ class RPX {
     const fileBuffer = await fs.promises.readFile(this.filePath);
 
     // Extract file data
-    const fileData = fileBuffer.subarray(offset, offset + size);
+    let fileData = fileBuffer.subarray(offset, offset + size);
+
+    if (this.version === 'ZiX-12B' && this.header.zixPrefixLength) {
+      fileData = deobfuscateZix12B(fileData, this.header.key, this.header.zixPrefixLength);
+    }
 
     // Ensure output directory exists
     const outputDir = path.dirname(outputPath);
@@ -745,7 +1028,17 @@ async function pathExists(targetPath) {
  * Normalise a version argument provided via CLI or API calls.
  *
  * @param {string|number} version Raw version identifier.
- * @returns {{ header: string, family: string, separateIndex: boolean, usesXor: boolean, defaultKey: number, defaultProtocol: number, defaultMarker: boolean, allowMarker: boolean }} Normalised metadata.
+ * @returns {{
+ *   header: string,
+ *   canonicalHeader: string,
+ *   family: string,
+ *   separateIndex: boolean,
+ *   usesXor: boolean,
+ *   defaultKey: number,
+ *   defaultProtocol: number,
+ *   defaultMarker: boolean,
+ *   allowMarker: boolean
+ * }} Normalised metadata.
  */
 function normalizeRpaVersion(version) {
   const raw = (version ?? '3.0').toString().trim().toUpperCase();
@@ -764,6 +1057,9 @@ function normalizeRpaVersion(version) {
     'RPA-3.0': 'RPA-3.0',
     '3.2': 'RPA-3.2',
     'RPA-3.2': 'RPA-3.2',
+    'ZIX-12A': 'ZiX-12A',
+    'ZIX-12B': 'ZiX-12B',
+    'ALT-1.0': 'ALT-1.0',
     '4': 'RPA-4.0',
     '4.0': 'RPA-4.0',
     'RPA-4': 'RPA-4.0',
@@ -775,9 +1071,12 @@ function normalizeRpaVersion(version) {
     throw new Error(`Unsupported RPA version "${version}"`);
   }
 
+  const canonicalHeader = header;
+
   if (header === 'RPA-1.0') {
     return {
       header,
+      canonicalHeader,
       family: '1.0',
       separateIndex: true,
       usesXor: false,
@@ -791,6 +1090,7 @@ function normalizeRpaVersion(version) {
   if (header === 'RPA-2.0') {
     return {
       header,
+      canonicalHeader,
       family: '2.0',
       separateIndex: false,
       usesXor: false,
@@ -801,9 +1101,10 @@ function normalizeRpaVersion(version) {
     };
   }
 
-  if (header === 'RPA-3.0' || header === 'RPA-3.2') {
+  if (header === 'RPA-3.0' || header === 'RPA-3.2' || header === 'ZiX-12A' || header === 'ZiX-12B' || header === 'ALT-1.0') {
     return {
       header,
+      canonicalHeader,
       family: '3.0',
       separateIndex: false,
       usesXor: true,
@@ -816,6 +1117,7 @@ function normalizeRpaVersion(version) {
 
   return {
     header,
+    canonicalHeader,
     family: '4.0',
     separateIndex: false,
     usesXor: true,
@@ -977,6 +1279,9 @@ async function createArchive({
   }
 
   const versionInfo = normalizeRpaVersion(version);
+  if (versionInfo.header === 'ZiX-12A' || versionInfo.header === 'ZiX-12B') {
+    throw new Error('Creating ZiX-12A/ZiX-12B archives is not supported by RPX');
+  }
   const files = await collectInputEntries(input, { includeHidden });
   if (files.length === 0) {
     throw new Error('No files were found to include in the archive');
@@ -1007,7 +1312,9 @@ async function createArchive({
   let headerPlaceholder = null;
 
   if (!versionInfo.separateIndex) {
-    if (versionInfo.usesXor) {
+    if (versionInfo.header === 'ALT-1.0') {
+      headerPlaceholder = `${versionInfo.header} ${'0'.repeat(8)} ${'0'.repeat(16)}\n`;
+    } else if (versionInfo.usesXor) {
       headerPlaceholder = `${versionInfo.header} ${'0'.repeat(16)} ${'0'.repeat(8)}\n`;
     } else {
       headerPlaceholder = `${versionInfo.header} ${'0'.repeat(16)}\n`;
@@ -1093,6 +1400,7 @@ async function createArchive({
 
     return {
       version: versionInfo.header,
+      canonicalVersion: versionInfo.canonicalHeader,
       output: resolvedOutput,
       indexFile: indexPath,
       files: records.length,
@@ -1125,7 +1433,11 @@ async function createArchive({
   if (headerPlaceholder) {
     const offsetHex = indexOffset.toString(16).toUpperCase().padStart(16, '0');
     let headerLine;
-    if (versionInfo.usesXor) {
+    if (versionInfo.header === 'ALT-1.0') {
+      const storedKey = (xorKey ^ ALT1_EXTRA_KEY) >>> 0;
+      const storedKeyHex = storedKey.toString(16).toUpperCase().padStart(8, '0');
+      headerLine = `${versionInfo.header} ${storedKeyHex} ${offsetHex}\n`;
+    } else if (versionInfo.usesXor) {
       const keyHex = (xorKey >>> 0).toString(16).toUpperCase().padStart(8, '0');
       headerLine = `${versionInfo.header} ${offsetHex} ${keyHex}\n`;
     } else {
@@ -1146,6 +1458,7 @@ async function createArchive({
 
   return {
     version: versionInfo.header,
+    canonicalVersion: versionInfo.canonicalHeader,
     output: resolvedOutput,
     files: records.length,
     dataBytes: totalDataBytes,

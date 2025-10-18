@@ -1,4 +1,4 @@
-﻿# Recipes & Examples
+# Recipes & Examples
 
 ## 1. Automating Releases with NPM Scripts
 
@@ -6,7 +6,7 @@
 {
   "scripts": {
     "build:assets": "node tools/build-assets.js",
-    "package:rpa": "rpx create -i dist/game -o dist/game.rpa --header 4.0",
+    "package:rpa": "rpx create -i dist/game -o dist/game.rpa --header ALT-1.0 --key 0xA1B2C3D4",
     "release": "npm run build:assets && npm run package:rpa"
   }
 }
@@ -21,7 +21,7 @@ async function rebuildArchive() {
   await createArchive({
     input: 'build/game',
     output: 'artifacts/game.rpa',
-    version: '3.0',
+    version: 'ALT-1.0',
     key: '0x42424242',
     includeHidden: true,
   });
@@ -90,4 +90,5 @@ async function packageRelease(config: ReleaseConfig): Promise<CreateArchiveResul
 }
 ```
 
-More real-world usage patterns are welcome – feel free to open a PR with additional recipes.
+More real-world usage patterns are welcome � feel free to open a PR with additional recipes.
+

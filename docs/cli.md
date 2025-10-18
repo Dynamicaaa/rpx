@@ -71,7 +71,7 @@ Create a new archive from files or directories.
 | ------ | ----------- |
 | `-i, --input <path>` | Directory or file to pack. *(required)* |
 | `-o, --output <file>` | Destination archive. *(required)* |
-| `-v, --header <header>` | Version header (`1.0`, `2.0`, `3.0`, `3.2`, `4.0`). |
+| `-v, --header <header>` | Version header (`1.0`, `2.0`, `3.0`, `3.2`, `4.0`, `ZiX-12A`, `ZiX-12B`, `ALT-1.0`). |
 | `-k, --key <hex>` | XOR key for RPA-3.x/4.x archives (`0x` prefix optional). |
 | `--protocol <n>` | Pickle protocol override (defaults per version). |
 | `--marker / --no-marker` | Control insertion of "Made with Ren'Py." markers (where supported). |
@@ -82,6 +82,8 @@ Create a new archive from files or directories.
 ```bash
 rpx create -i build/game -o dist/game.rpa --header 4.0 --key 0x42
 ```
+
+ALT-1.0 archives store an obfuscated XOR key in the header; supply the real key via `--key` and RPX will emit the correct format. ZiX-12A/ZiX-12B extraction requires the accompanying `loader.py`/`.pyc` file next to the archive so the verification code can be recovered. Creating ZiX archives is not supported.
 
 ## Exit Codes
 

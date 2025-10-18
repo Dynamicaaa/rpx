@@ -1,14 +1,14 @@
-﻿# Project Overview
+# Project Overview
 
 RPX is an end-to-end Ren'Py archive toolkit implemented in modern JavaScript. It exposes the same primitives that power the official CLI so you can embed archive manipulation in build pipelines, CI jobs, or bespoke tools without shelling out to the command line.
 
 ## Key Features
 
-- **Archive creation** – generate `.rpa` archives targeting headers `RPA-1.0` through `RPA-4.0`, including optional XOR obfuscation and Ren'Py marker padding.
-- **Archive extraction** – unpack archives, list contents, and automatically decompile `.rpyc` scripts via unrpyc-js.
-- **Runtime heuristics** – detect the originating Ren'Py/Python runtime to assist in forward/backward compatibility decisions.
-- **Legacy support** – first-generation archives (`.rpa` + `.rpi`) are handled transparently by the same API.
-- **Node friendly** – published as an ES module with zero native dependencies. Works from Node.js 16 onward.
+- **Archive creation** - generate `.rpa` archives targeting headers RPA-1.0 through RPA-4.0 (ALT-1.0 output supported; ZiX-12A/ZiX-12B extraction relies on loader metadata), including optional XOR obfuscation and Ren'Py marker padding.
+- **Archive extraction** - unpack archives, list contents, automatically decompile `.rpyc` scripts via [`@dynamicaaa/unrpyc-js`](../unrpyc-js/README.md), and recover indexes that hide behind junk prefixes.
+- **Runtime heuristics** - detect the originating Ren'Py/Python runtime to assist in forward/backward compatibility decisions.
+- **Legacy support** - first-generation archives (`.rpa` + `.rpi`) are handled transparently by the same API.
+- **Node friendly** - published as an ES module with zero native dependencies. Works from Node.js 16 onward.
 
 ## Architecture at a Glance
 
@@ -23,13 +23,13 @@ The package is organised around a handful of core building blocks:
 
 Under the hood the library relies on:
 
-- **PyRunner** (`@dynamicaaa/pyrunner`) for running Python snippets when pickling or decompiling.
-- **unrpyc-js** for `.rpyc` decompilation support (this is automatically invoked when required).
-- **rpicklex** (bundled) for loading Python pickle indexes without the CPython runtime.
+- **PyRunner** ([`@dynamicaaa/pyrunner`](https://www.npmjs.com/package/@dynamicaaa/pyrunner)) for running Python snippets when pickling or decompiling.
+- **UnrpycJS** ([`@dynamicaaa/unrpyc-js`](../unrpyc-js/README.md)) built on top of [CensoredUsername/unrpyc](https://github.com/CensoredUsername/unrpyc) to decompile `.rpyc` files.
+- **RPickleX** ([`@dynamicaaa/rpicklex`](../rpicklex/README.md)) for loading Python pickle indexes without the CPython runtime.
 
 ## Compatibility
 
-- Node.js ≥ 16 is recommended (tested up to the latest LTS).
+- Node.js >= 16 is recommended (tested up to the latest LTS).
 - Archives produced using RPX are recognised by the Ren'Py SDK as well as community tools like `unrpa` and `rpatool`.
 - When targeting Python 2 era games you can force `--header 2.0` (or `1.0`) to ensure downstream compatibility.
 

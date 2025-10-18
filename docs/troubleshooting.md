@@ -1,10 +1,13 @@
-﻿# Troubleshooting
+# Troubleshooting
 
 ## Python runtime downloads every run
 RPX relies on `@dynamicaaa/pyrunner` which caches a portable Python runtime per project. Ensure the process can write to the PyRunner cache directory (`~/.pyrunner` by default). Use the `PYRUNNER_HOME` environment variable to override the location.
 
 ## `Unsupported RPA version` when reading an archive
-Double-check the archive header. RPX recognises `RPA-1.0`, `RPA-2.0`, `RPA-3.0`, `RPA-3.2`, and `RPA-4.0`. Archives with custom headers produced by modified engines need the `--header` flag during creation to match their expectations.
+Double-check the archive header. RPX recognises `RPA-1.0`, `RPA-2.0`, `RPA-3.0`, `RPA-3.2`, `RPA-4.0`, and proprietary variants like `ZiX-12A`, `ZiX-12B`, and `ALT-1.0`. ZiX archives require the accompanying `loader.py`/`.pyc` file to recover their verification code.
+
+## `Failed to decompress index` on ZiX variants
+RPX automatically scans ahead for the start of the zlib stream when handling ZiX-12A/ZiX-12B archives. Ensure the matching loader file is present and rerun with `--debug` to confirm the detected junk prefix. For other custom headers you can override detection with `--header` to force the expected format.
 
 ## `Index offset ... is beyond file end`
 The header offset did not match the actual index location. This usually happens when the archive was truncated or when the index was stripped. For RPA-1.0 ensure the companion `.rpi` file is present next to the `.rpa` file.

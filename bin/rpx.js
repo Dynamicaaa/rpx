@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 
 import fs from 'fs';
 import path from 'path';
@@ -223,7 +223,10 @@ async function handleExtractCommand(argv) {
 
     spinner.text = 'Reading archive header...';
     const header = await rpx.readHeader();
-    spinner.succeed(`Archive version: ${chalk.yellow(header.version)}`);
+    const headerLabel = header.isAlias && header.canonicalVersion
+      ? `${header.version} (alias of ${header.canonicalVersion})`
+      : header.version;
+    spinner.succeed(`Archive version: ${chalk.yellow(headerLabel)}`);
 
     if (file) {
       // Extract specific file
@@ -475,7 +478,10 @@ async function handleInfoCommand(argv) {
     console.log(`  ${chalk.cyan('File:')}           ${chalk.yellow(path.basename(input))}`);
     console.log(`  ${chalk.cyan('Path:')}           ${chalk.gray(path.resolve(input))}`);
     console.log(`  ${chalk.cyan('Size:')}           ${chalk.yellow(formatSize(stats.size))}`);
-    console.log(`  ${chalk.cyan('Version:')}        ${chalk.yellow(header.version)}`);
+    const headerLabel = header.isAlias && header.canonicalVersion
+      ? `${header.version} (alias of ${header.canonicalVersion})`
+      : header.version;
+    console.log(`  ${chalk.cyan('Version:')}        ${chalk.yellow(headerLabel)}`);
     console.log(`  ${chalk.cyan('Files:')}          ${chalk.yellow(files.length)}`);
     
     if (header.key) {
@@ -484,6 +490,9 @@ async function handleInfoCommand(argv) {
     
     if (header.offset) {
       console.log(`  ${chalk.cyan('Index Offset:')}  ${chalk.yellow(header.offset)} bytes`);
+    }
+    if (typeof header.indexJunkPrefix === 'number' && header.indexJunkPrefix > 0) {
+      console.log(`  ${chalk.cyan('Index Junk:')}    ${chalk.yellow(header.indexJunkPrefix)} byte prefix skipped`);
     }
 
     if (verbose) {
@@ -563,7 +572,10 @@ async function handleCreateCommand(argv) {
     if (result.indexFile && result.indexFile !== resolvedOutput) {
       console.log(`${chalk.cyan('Index:')}         ${chalk.yellow(result.indexFile)}`);
     }
-    console.log(`${chalk.cyan('Version:')}       ${chalk.yellow(result.version)}`);
+    const versionLabel = result.canonicalVersion && result.canonicalVersion !== result.version
+      ? `${result.version} (alias of ${result.canonicalVersion})`
+      : result.version;
+    console.log(`${chalk.cyan('Version:')}       ${chalk.yellow(versionLabel)}`);
     if (result.key !== null && result.key !== undefined) {
       const keyHex = (result.key >>> 0).toString(16).toUpperCase().padStart(8, '0');
       console.log(`${chalk.cyan('XOR Key:')}       ${chalk.yellow('0x' + keyHex)}`);
