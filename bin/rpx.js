@@ -566,7 +566,7 @@ async function handleCreateCommand(argv) {
       force,
     });
 
-    spinner.succeed(chalk.green('✔ Archive created'));
+    spinner.succeed(chalk.green('Archive created'));
 
     console.log(`${chalk.cyan('Output:')}        ${chalk.yellow(resolvedOutput)}`);
     if (result.indexFile && result.indexFile !== resolvedOutput) {
@@ -635,4 +635,5 @@ export {
   handleInfoCommand,
   handleCreateCommand
 };
+
 
