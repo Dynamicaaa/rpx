@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="images/logo.png" alt="Sayonika" width="400" height="200">
+  <h1>RPX</h1>
 
   <h3>A multi-purpose Ren'Py tool</h3>
 
